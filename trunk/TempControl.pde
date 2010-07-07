@@ -1,6 +1,7 @@
 #undef int()
 #include <stdio.h>
 #include <avr/interrupt.h>
+#include <LiquidCrystal.h>
 
 
 #define NUM_CHANNELS 4
@@ -48,6 +49,7 @@ char *line1 = "1XXXXXXXXXXXXXXX";
 char *line2 = "2XXXXXXXXXXXXXXX";
 char tempUnits = 'F';
 
+LiquidCrystal lcd(0,1,6,7,8,9);
 
 volatile int currentChannelNumber = 0;
 
@@ -82,7 +84,7 @@ unsigned int setModeY = 1;
 
 void clearScreen()
 {
-  Serial.print("?f");
+  lcd.clear();
 }
 
 boolean setMode()
@@ -148,76 +150,67 @@ void initializeDisplay()
 
 void initializeMultichannelRunMode()
 {
-    Serial.println("?a");
+    lcd.clear();
     sprintf(line1, " 1: %2u%1c  2: %2u%1c ", temp[0], tempUnits, temp[1], tempUnits);
     sprintf(line2, " 3: %2u%1c  4: %2u%1c ", temp[2], tempUnits, temp[3], tempUnits);
-    Serial.println(line1);
-    Serial.println(line2);
+    lcd.print(line1);
+    lcd.setCursor(0,0)
+    lcd.print(line2);
 
 }
 
 void updateMultichannelRunMode(int channelToUpdate, int newTemperature)
 {
-  char *strTemp = "?x00?y000";
+  char *strTemp = "00";
   int cursorX = displayX[channelToUpdate]; //4 for 1, 3 12 for 2, 4
   int cursorY = displayY[channelToUpdate]; // 1 for 1,2 0 for 3, 4
-  sprintf(strTemp,"?x%02u?y%1u%2u",cursorX,cursorY,newTemperature);
-  Serial.print(strTemp);
+  lcd.setCursor(cursorX,cursorY);
+  sprintf(strTemp,"%2u",newTemperature);
+  lcd.print(strTemp);
 }
 
 void initializeSetMode(int channelToDisplay)
 {
-  Serial.println("?a");
+  lcd.clear();
   sprintf(line1, "CH%1u: %2u%1c %s ",channelToDisplay + 1, set[channelToDisplay],tempUnits, modeString[channelMode[channelToDisplay]]);
-//  sprintf(line2, " +  -  MODE EXIT");
-  Serial.println(line1);
-//  Serial.println(line2);
+  lcd.println(line1);
 }
 
 void updateSetTempDisplay(int newTemp)
 {
-  char *buf = "?x00?y100";
-  sprintf(buf,"?x%02u?y%1u%2u",setTempX,setTempY,newTemp);
-  Serial.print(buf);
-}
-
-void updateSetModeDisplay(int channelToUpdate)
-{
-  char *buf = "?x00y1MCOOL";
-  sprintf(buf,"?x%02uy%1u%-5s",setModeX,setModeY,modeString[channelMode[channelToUpdate]]);
-  Serial.print(buf);
+  char *buf = "00";
+  lcd.setCursor(setTempX,setTempY);
+  sprintf(buf,"u%2u",newTemp);
+  lcd.print(buf);
 }
 
 
 void initializeSingleChannelRunMode(int channelToDisplay)
 {
-  Serial.println("?a");
   sprintf(line1, "CH%1u: %2u%1c %s    ",channelToDisplay + 1, temp[channelToDisplay],tempUnits, statusString[channelStatus[channelToDisplay]]);
   sprintf(line2, "SET: %2u%1c %s  ", set[channelToDisplay],tempUnits, modeString[channelMode[channelToDisplay]]);
-  Serial.println(line1);
-  Serial.println(line2);
+  lcd.clear();
+  lcd.print(line1);
+  lcd.setCursor(0,0);
+  lcd.print(line2);
 }
 
 void updateSingleChannelRunTemp(int channelToUpdate)
 {
-    char *buf = "?x00y150";
-    sprintf(buf, "?x%02uy%1u%02u", singleChannelTempX, singleChannelTempY, temp[channelToUpdate]);
+    char *buf = "50";
+    lcd.setCursor(singleChannelTempX,singleChannelTempY);
+    sprintf(buf, %02u",temp[channelToUpdate]);
     Serial.print(buf);
 }
 
 void updateSingleChannelRunStatus(int channelToUpdate)
 {
-    char *buf = "?x00y1OFF";
-    sprintf(buf, "?x%02y%1u%3s", singleChannelStatusX, singleChannelStatusY, statusString[channelStatus[channelToUpdate]]);
-    Serial.print(buf);
+    char *buf = "OFF";
+    lcd.setCursor(singleChannelStatusX,singleChannelStatusY);
+    sprintf(buf, "%3s", statusString[channelStatus[channelToUpdate]]);
+    lcd.print(buf);
 }
 
-void displayConfirmScreen()
-{
-  Serial.println("?a");
-  Serial.println("Save Settings??  ");
-  Serial.println(" YES         NO ");
-}
 
 int getTemp(int channelToRead)
 {
@@ -236,14 +229,10 @@ void setup()                    // run once, when the sketch starts
   pinMode(SELECT_MODE, INPUT);
 
 
-  Serial.begin(9600);
-  Serial.print("?G216");  //2x16 screen
-  Serial.print("?BFF");  // Backlight to FULL BLAST
-  delay(100);
-  Serial.print("?c0");   // No cursor
-  clearScreen();
-//  display();
-
+ lcd.begin(16,2);
+ 
+ 
+ 
   //Set up interrupts for analog pins (8=>0-13=>5)
 
   PCMSK1 |= 1 << ANALOG_INT_1;
