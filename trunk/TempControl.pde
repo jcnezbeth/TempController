@@ -9,6 +9,8 @@
 
 #define TEMP_INCREMENT 1
 
+#define TEMP_TOLERANCE 3
+
 #define DISPLAY_MODE_SINGLE_CHANNEL 0
 #define DISPLAY_MODE_MULTI_CHANNEL 1
 
@@ -57,20 +59,22 @@ volatile int currentChannelNumber = 0;
 volatile unsigned int temp[] = {45, 37, 32, 70};
 volatile unsigned int lastTemp[] = {0,0,0,0};
 volatile unsigned int set[] = {50, 51, 27, 68};
-volatile int channelStatus[4] = {1, 0, 1, 0};
+volatile int channelStatus[NUM_CHANNELS] = {1, 0, 1, 0};
 
 //volatile boolean setMode = false;
 volatile boolean setModeLastInt = false;
 volatile int displayMode = DISPLAY_MODE_MULTI_CHANNEL;
 
+volatile int channelMode[NUM_CHANNELS] = {1,0,0,0};
+
 unsigned char buttonPorts = 0;
 
 
 //display information
-char modeString[4][6] = {"HEAT ","MCOOL","COOL ","MHEAT"};
+char modeString[NUM_MODES][6] = {"HEAT ","MCOOL","COOL ","MHEAT"};
 char statusString[2][4] = {"OFF","ON "};
-unsigned int displayX[] = {0, 12, 0, 12};
-unsigned int displayY[] = {1, 1, 0, 0};
+unsigned int displayX[NUM_CHANNELS] = {0, 12, 0, 12};
+unsigned int displayY[NUM_CHANNELS] = {1, 1, 0, 0};
 unsigned int singleChannelTempX = 6;
 unsigned int singleChannelTempY = 1;
 unsigned int singleChannelModeX = 9;
@@ -154,9 +158,28 @@ void initializeMultichannelRunMode()
     sprintf(line1, " 1: %2u%1c  2: %2u%1c ", temp[0], tempUnits, temp[1], tempUnits);
     sprintf(line2, " 3: %2u%1c  4: %2u%1c ", temp[2], tempUnits, temp[3], tempUnits);
     lcd.print(line1);
-    lcd.setCursor(0,0)
+    lcd.setCursor(0,0);
     lcd.print(line2);
 
+}
+
+void setRelayStatus()
+//not even trying to generalize this here -- channel 0 is master cool, all the others run heaters
+//basically, if we have any fermenters that are too warm, we need master cool turned on.
+{
+  boolean hotOne = false;
+  for (int i == 1; i < NUM_CHANNELS; i++)
+  {
+    if (abs(temp[i] - set[i]) >= TEMP_TOLERANCE)
+    {
+      if (temp[i] > set[i])
+      {
+        hotOne = true;
+      }
+      else
+      {
+        
+  }  
 }
 
 void updateMultichannelRunMode(int channelToUpdate, int newTemperature)
@@ -180,7 +203,7 @@ void updateSetTempDisplay(int newTemp)
 {
   char *buf = "00";
   lcd.setCursor(setTempX,setTempY);
-  sprintf(buf,"u%2u",newTemp);
+  sprintf(buf,"%2u",newTemp);
   lcd.print(buf);
 }
 
@@ -199,7 +222,7 @@ void updateSingleChannelRunTemp(int channelToUpdate)
 {
     char *buf = "50";
     lcd.setCursor(singleChannelTempX,singleChannelTempY);
-    sprintf(buf, %02u",temp[channelToUpdate]);
+    sprintf(buf, "%02u",temp[channelToUpdate]);
     Serial.print(buf);
 }
 
@@ -226,7 +249,6 @@ void setup()                    // run once, when the sketch starts
   pinMode(SET_MODE_SWITCH, INPUT);
   pinMode(SELECT_UP, INPUT);
   pinMode(SELECT_DOWN, INPUT);
-  pinMode(SELECT_MODE, INPUT);
 
 
  lcd.begin(16,2);
@@ -294,7 +316,7 @@ ISR(PCINT0_vect) //digital change (button poked)
     selectDown();
   }
 
-
+}
 void processDisplay(int channel)
 {
   //dispatch routine that holds all the logic for deciding what display update routine to call after pin change interrupt
