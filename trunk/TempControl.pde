@@ -5,26 +5,29 @@
 
 
 #define NUM_CHANNELS 4
-#define NUM_MODES 4
 
-#define TEMP_INCREMENT 1
+//the number of degrees each press of a button will change the temperature setting
+#define TEMP_INCREMENT 1 
 
+//the amount of 'slop' allowed.
+//any temperature reading within this many degrees of set is as good as at the set temp
 #define TEMP_TOLERANCE 3
+
 
 #define DISPLAY_MODE_SINGLE_CHANNEL 0
 #define DISPLAY_MODE_MULTI_CHANNEL 1
 
-//pin definitions
+//input button pin definitions
 #define SELECT_CHANNEL 10
 #define SET_MODE_SWITCH 11
 #define SELECT_UP 12
 #define SELECT_DOWN 13
 
-#define CONTROL_1 2
-#define CONTROL_2 3
-#define CONTROL_3 4
-#define CONTROL_4 5
 
+//output pin definitions
+#define CONTROL_MASTER 18 // analog pin 4
+
+#define CONTROL_BASE 2 // for calculating output channel numbers: digitalWrite(CONTROL_BASE + i, HIGH)
 
 //pin interrupt definitions
 #define ANALOG_INT_1  PCINT8  //port C = PCMSK1
@@ -36,6 +39,9 @@
 #define INT_SET_MODE_SWITCH PCINT3
 #define INT_SELECT_UP       PCINT4
 #define INT_SELECT_DOWN     PCINT5
+
+
+#define NUM_MODES 4
 
 #define MODE_HEAT   0
 #define MODE_MCOOL  1
@@ -164,21 +170,41 @@ void initializeMultichannelRunMode()
 }
 
 void setRelayStatus()
-//not even trying to generalize this here -- channel 0 is master cool, all the others run heaters
 //basically, if we have any fermenters that are too warm, we need master cool turned on.
+//if any fermenters are too cold, we need its heater turned on.
 {
   boolean hotOne = false;
-  for (int i == 1; i < NUM_CHANNELS; i++)
+  for (int i == 0; i < NUM_CHANNELS; i++)
   {
     if (abs(temp[i] - set[i]) >= TEMP_TOLERANCE)
     {
       if (temp[i] > set[i])
       {
+        //too warm
         hotOne = true;
+        digitalWrite(CONTROL_BASE + i, LOW);
       }
       else
       {
-        
+        //too cold
+        digitalWrite(CONTROL_BASE + i, HIGH);
+      }
+    }
+    else
+    {
+      //just right
+      digitalWrite(CONTROL_BASE + i, LOW);
+    }
+    
+    //if we've found a fermenter that's too warm, turn the master cooler on
+    if (hotOne)
+    {
+      digitalWrite(MASTER_CONTROL, HIGH);
+    }
+    else
+    {
+      digitalWrite(MASTER_CONTROL, LOW);
+    }
   }  
 }
 
@@ -263,7 +289,7 @@ void setup()                    // run once, when the sketch starts
   PCMSK1 |= 1 << ANALOG_INT_4;
 
 //Set up interrupts for digital pins (0-7=>0-7 and 16-23)
-  PCMSK0 |= 1 << INT_SELECT_CHANNEL;  //pin3  -- port D = PCMSK2
+  PCMSK0 |= 1 << INT_SELECT_CHANNEL;  
   PCMSK0 |= 1 << INT_SET_MODE_SWITCH;
   PCMSK0 |= 1 << INT_SELECT_UP;
   PCMSK2 |= 1 << INT_SELECT_DOWN;
